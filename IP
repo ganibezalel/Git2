@@ -1,0 +1,71 @@
+import requests
+import pandas as pd
+import os
+
+API_KEY = "b081ad77624447d9a7845b4147527458"
+
+INPUT_FILE = r"D:\IPAddress.xlsx"
+OUTPUT_FILE = r"D:\output_results.xlsx"
+
+def get_details(ip):
+    url = "https://api.ipgeolocation.io/ipgeo"
+    
+    params = {
+        "apiKey": API_KEY,
+        "ip": ip
+    }
+
+    try:
+        response = requests.get(url, params=params, timeout=5)
+        data = response.json()
+
+        org = data.get("organization", "N/A")
+
+        # Type logic
+        if org != "N/A":
+            org_lower = org.lower()
+            if any(x in org_lower for x in ["google", "amazon", "aws", "microsoft", "azure"]):
+                type_val = "HOSTING"
+            elif any(x in org_lower for x in ["airtel", "jio", "vodafone", "telecom", "broadband"]):
+                type_val = "ISP"
+            else:
+                type_val = "BUSINESS"
+        else:
+            type_val = "N/A"
+
+        return [ip, org, org, type_val]
+
+    except Exception as e:
+        return [ip, "Error", "Error", "Error"]
+
+
+def main():
+    # 🔴 Check file exists
+    if not os.path.exists(INPUT_FILE):
+        print("❌ File not found. Please check path:")
+        print(INPUT_FILE)
+        return
+
+    df = pd.read_excel(INPUT_FILE)
+
+    results = []
+
+    for ip in df.iloc[:, 0]:
+        ip = str(ip).strip()
+        if ip:
+            print(f"Processing: {ip}")
+            results.append(get_details(ip))
+
+    # Create DataFrame with correct columns
+    out_df = pd.DataFrame(results, columns=[
+        "IP Address", "Organization", "Company", "Type"
+    ])
+
+    out_df.to_excel(OUTPUT_FILE, index=False)
+
+    print("\n✅ Done! Output saved at:")
+    print(OUTPUT_FILE)
+
+
+if __name__ == "__main__":
+    main()
